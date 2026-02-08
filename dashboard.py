@@ -162,10 +162,26 @@ def main():
     # -------------------------------------------------------------------------
     # Row 2: Main Chart (주가 흐름)
     # -------------------------------------------------------------------------
-    # 캔들스틱
+    # 캔들스틱 (기본 차트)
     fig.add_trace(go.Candlestick(
         x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-        name='Price', increasing_line_color='#26A69A', decreasing_line_color='#EF5350'
+        name='Price', increasing_line_color='#26A69A', decreasing_line_color='#EF5350',
+        hovertemplate=(
+            "<b>Date</b>: %{x|%Y-%m-%d}<br>"
+            "<b>Open</b>: %{open:,.0f}<br>"
+            "<b>High</b>: %{high:,.0f}<br>"
+            "<b>Low</b>: %{low:,.0f}<br>"
+            "<b>Close</b>: %{close:,.0f}<br>"
+            "<extra></extra>"  # 범례 이름 제거
+        )
+    ), row=2, col=1)
+
+    # 라인 차트 (버튼으로 전환용, 초기에는 숨김)
+    fig.add_trace(go.Scatter(
+        x=df.index, y=df['Close'],
+        mode='lines', line=dict(color='#26A69A', width=2),
+        name='Close Line', visible=False,  # 초기 상태는 숨김
+        hovertemplate="<b>Date</b>: %{x|%Y-%m-%d}<br><b>Close</b>: %{y:,.0f}<extra></extra>"
     ), row=2, col=1)
 
     # 볼린저밴드 (채널 표시)
@@ -287,11 +303,47 @@ def main():
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=0.90,  # Row 2 상단 부근 (미세 조정)
+            y=0.90,
             xanchor="right",
             x=0.98,
             bgcolor="rgba(255, 255, 255, 0.5)"
-        )
+        ),
+        # ---------------------------------------------------------------------
+        # 버튼 메뉴 (Chart Style & Indicator Toggle)
+        # ---------------------------------------------------------------------
+        updatemenus=[
+            # 1. 차트 스타일 전환 (캔들스틱 vs 라인) - 좌측
+            dict(
+                type="buttons",
+                direction="left",
+                active=0,
+                x=0.01, y=0.92,  # 메인 차트 바로 위 좌측
+                buttons=list([
+                    dict(label="Candle",
+                         method="update",
+                         # Visible: [KPI*6, Candle, Line, BB*2, MA*2, Rest...]
+                         args=[{"visible": [True]*6 + [True, False] + [True]*30}]),
+                    dict(label="Line",
+                         method="update",
+                         args=[{"visible": [True]*6 + [False, True] + [True]*30}])
+                ]),
+            ),
+            # 2. 보조지표 토글 (볼린저 밴드 On/Off) - 우측 (Side-by-Side)
+            dict(
+                type="buttons",
+                direction="left",
+                showactive=True,
+                x=0.12, y=0.92, # 차트 스타일 버튼 우측에 배치 (같은 높이)
+                buttons=list([
+                    dict(label="BB On",
+                         method="restyle",
+                         args=["visible", True, [8, 9]]), # Trace 8, 9는 BB Upper/Lower
+                    dict(label="BB Off",
+                         method="restyle",
+                         args=["visible", False, [8, 9]])
+                ]),
+            )
+        ]
     )
 
     # 메인 차트에만 Range Slider 활성화 (두께 줄여서 겹침 방지)
@@ -301,11 +353,34 @@ def main():
         row=2, col=1
     )
 
-    # 그리드 스타일링
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#ECEFF1')
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#ECEFF1')
+    # 그리드 및 Spikolines (십자선) 설정
+    fig.update_yaxes(
+        showgrid=True, gridwidth=1, gridcolor='#ECEFF1',
+        showspikes=True, spikemode='across', spikesnap='cursor', showline=True, spikedash='dash'
+    )
+    fig.update_xaxes(
+        showgrid=True, gridwidth=1, gridcolor='#ECEFF1',
+        showspikes=True, spikemode='across', spikesnap='cursor', showline=True, spikedash='dash'
+    )
 
-    fig.show()
+
+
+    # 대화형 실행 (모드바 설정 포함)
+    fig.show(
+        config={
+            'displayModeBar': True,
+            'modeBarButtonsToAdd': [
+                'drawline', 'drawopenpath', 'drawclosedpath', 'drawcircle', 'drawrect', 'eraseshape'
+            ],
+            'toImageButtonOptions': {
+                'format': 'png',
+                'filename': 'saltlux_chart',
+                'height': 1200,
+                'width': 1800,
+                'scale': 2
+            }
+        }
+    )
     print("통합 대시보드 생성 완료.")
 
 if __name__ == "__main__":
